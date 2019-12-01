@@ -1,6 +1,6 @@
-import json
 import re
 from pathlib import Path
+from urllib.error import HTTPError
 from urllib.parse import urlparse
 from urllib.request import urlretrieve
 
@@ -9,15 +9,20 @@ import requests
 
 
 @click.command()
-@click.option('--bbox', required=True, type=str, help='Bounding box, .')
+@click.option(
+    '--bbox',
+    required=True,
+    type=str,
+    help='Bounding box to download data for. Should be west, south, east, north.'
+)
 def main(bbox):
     bbox = tuple(map(float, re.split(r'[, ]+', bbox)))
     print(f'Downloading contour datasets for bbox: {bbox}')
     download_dir = Path('data/raw')
     download_dir.mkdir(parents=True, exist_ok=True)
     local_paths = download_contours(bbox, directory=download_dir)
-    with open('paths.json', 'w') as f:
-        json.dump(_paths_to_str(local_paths), f)
+    with open('paths.txt', 'w') as f:
+        f.writelines(_paths_to_str(local_paths))
 
 
 def download_contours(bbox, directory, overwrite=False):
@@ -27,7 +32,8 @@ def download_contours(bbox, directory, overwrite=False):
     for url in urls:
         print(f'Downloading url: {url}')
         local_path = download_url(url, directory, overwrite=overwrite)
-        local_paths.append(local_path)
+        if local_path is not None:
+            local_paths.append(local_path)
 
     return local_paths
 
@@ -73,7 +79,11 @@ def download_url(url, directory, overwrite=False):
     filename = Path(parsed_url.path).name
     local_path = Path(directory) / filename
     if overwrite or (not local_path.exists()):
-        urlretrieve(url, local_path)
+        try:
+            urlretrieve(url, local_path)
+        except HTTPError:
+            print(f'File could not be downloaded:\n{url}')
+            return None
 
     return local_path.resolve()
 
