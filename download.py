@@ -11,7 +11,8 @@ import requests
 @click.command()
 @click.option('--bbox', required=True, type=str, help='Bounding box, .')
 def main(bbox):
-    bbox = tuple(map(float, re.split(r'[, ]', bbox)))
+    bbox = tuple(map(float, re.split(r'[, ]+', bbox)))
+    print(f'Downloading contour datasets for bbox: {bbox}')
     download_dir = Path('data/raw')
     download_dir.mkdir(parents=True, exist_ok=True)
     local_paths = download_contours(bbox, directory=download_dir)
@@ -24,6 +25,7 @@ def download_contours(bbox, directory, overwrite=False):
 
     local_paths = []
     for url in urls:
+        print(f'Downloading url: {url}')
         local_path = download_url(url, directory, overwrite=overwrite)
         local_paths.append(local_path)
 
