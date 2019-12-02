@@ -14,10 +14,10 @@ for elev_file in data/raw/*GDB.zip; do
     # Get geojson filename
     geojson_name="data/geojson/${filename}.geojson"
 
-    # Delete existing file
-    rm -f $geojson_name
-
-    # Create new GeoJSONSeq file using OGR
-    ogr2ogr -f GeoJSONSeq $geojson_name $elev_file Elev_Contour
-    echo "Finished exporting $elev_file to GeoJSONSeq"
+    # Only create new geojson files if they don't exist
+    if [ ! -f $geojson_name ]; then
+        # Create new GeoJSONSeq file using OGR
+        ogr2ogr -f GeoJSONSeq $geojson_name $elev_file Elev_Contour
+        echo "Finished exporting $elev_file to GeoJSONSeq"
+    fi
 done
