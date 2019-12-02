@@ -1,5 +1,7 @@
 data/
 paths.json
+paths.txt
+*.mbtiles
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
