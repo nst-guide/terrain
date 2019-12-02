@@ -2,6 +2,25 @@
 
 Generate hillshade from USGS data.
 
+### Terrarium dataset
+
+It's also currently possible to use the publicly-hosted Terrarium dataset
+on [AWS Public Datasets](https://registry.opendata.aws/terrain-tiles/) for free.
+This is an easy, quick solution if you don't want to generate your own tiles. If
+you want to go that route, set this as your source in your `style.json`:
+```json
+"terrarium": {
+  "type": "raster-dem",
+  "tiles": [
+	"https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
+  ],
+  "minzoom": 0,
+  "maxzoom": 15,
+  "encoding": "terrarium"
+}
+```
+
+
 ## Overview
 
 I use [OpenMapTiles](https://github.com/openmaptiles/openmaptiles) to create
