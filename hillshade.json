@@ -1,5 +1,5 @@
 {
-	"attribution": "USGS",
+	"attribution": "<a href=\"https://www.usgs.gov/\" target=\"_blank\">© USGS</a>",
 	"description": "Hillshade generated from 1 arc-second USGS DEM",
 	"format": "png",
 	"id": "hillshade",

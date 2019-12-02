@@ -1,5 +1,5 @@
 {
-	"attribution": "<a href='https://www.usgs.gov/'>USGS</a>, color scheme &copy; <a href='https://caltopo.com'>Caltopo</a>",
+	"attribution": "<a href=\"https://www.usgs.gov/\" target=\"_blank\">© USGS</a> <a href=\"https://caltopo.com\" target=\"_blank\">color scheme © Caltopo</a>",
 	"description": "Slope-angle shading generated from 1 arc-second USGS DEM",
 	"format": "png",
 	"id": "slope_angle",
