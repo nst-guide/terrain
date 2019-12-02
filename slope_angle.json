@@ -1,0 +1,12 @@
+{
+	"attribution": "<a href='https://www.usgs.gov/'>USGS</a>, color scheme &copy; <a href='https://caltopo.com'>Caltopo</a>",
+	"description": "Slope-angle shading generated from 1 arc-second USGS DEM",
+	"format": "png",
+	"id": "slope_angle",
+	"maxzoom": 10,
+	"minzoom": 3,
+	"name": "slope_angle",
+	"scheme": "tms",
+	"tiles": ["https://tiles.nst.guide/slope_angle/{z}/{x}/{y}.png"],
+	"version": "2.2.0"
+}

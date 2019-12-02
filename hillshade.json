@@ -1,0 +1,12 @@
+{
+	"attribution": "USGS",
+	"description": "Hillshade generated from 1 arc-second USGS DEM",
+	"format": "png",
+	"id": "hillshade",
+	"maxzoom": 10,
+	"minzoom": 3,
+	"name": "hillshade",
+	"scheme": "tms",
+	"tiles": ["https://tiles.nst.guide/hillshade/{z}/{x}/{y}.png"],
+	"version": "2.2.0"
+}
