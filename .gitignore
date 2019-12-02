@@ -1,3 +1,5 @@
+gdal2tiles/
+gdal2tiles.py
 data/
 paths.json
 paths.txt
