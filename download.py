@@ -22,7 +22,7 @@ import requests
     help="Re-download and overwrite existing files.")
 def main(bbox, overwrite):
     bbox = tuple(map(float, re.split(r'[, ]+', bbox)))
-    print(f'Downloading contour datasets for bbox: {bbox}')
+    print(f'Downloading Digital Elevation Models for bbox: {bbox}')
     download_dir = Path('data/raw')
     download_dir.mkdir(parents=True, exist_ok=True)
     local_paths = download_dem(

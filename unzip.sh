@@ -13,8 +13,10 @@ for dem_file in data/raw/*.zip; do
 
     # Unzip
     # -n: never overwrite
+    # apparently has to go _first_
+    # https://superuser.com/a/100659
     # -d: extract to directory
-    unzip $dem_file "*.img" -d data/unzipped/ -n
+    unzip -n $dem_file "*.img" -d data/unzipped/
     unzipped_name="data/unzipped/${filename}.unzipped"
 
     echo "Finished unzipping $dem_file"

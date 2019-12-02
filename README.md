@@ -1,13 +1,22 @@
-# contours
+# Hillshade
 
-Generate vector tile contours from USGS data.
+Generate hillshade from USGS data.
 
 ## Overview
 
-I use [OpenMapTiles](https://github.com/openmaptiles/openmaptiles) to self-host
-vector map tiles. However, I'm interested in building a topographic, outdoors
-map, and so I need contour lines. The USGS releases [1x1 degree 40' contour line data][contours]
-generated from their 1/3 arc-second seamless DEM. In order to integrate this data with OpenMapTiles, I need to cut the contour lines into vector tiles, and then I can add them as a separate source in my `style.json`. Something like:
+I use [OpenMapTiles](https://github.com/openmaptiles/openmaptiles) to create
+self-hosted vector map tiles. However, I'm interested in building a topographic,
+outdoors map. A hillshade layer really helps understand the terrain, and just
+looks pretty.
+
+I'll use the 1 arc-second seamless DEM from the USGS.  It would also be possible
+to use the 1/3 arc-second seamless data, which is the best seamless resolution
+available for the continental US, but those file sizes are 9x bigger, so for now
+I’m just going to generate from the 1 arc-second.
+
+In order to integrate this data with OpenMapTiles, after making the hillshade I
+need to cut it into raster tiles, and then I can add it as a separate source in
+my `style.json`. Something like:
 
 ```json
 "sources": {
@@ -15,9 +24,10 @@ generated from their 1/3 arc-second seamless DEM. In order to integrate this dat
     "type": "vector",
     "url": "https://api.maptiler.com/tiles/v3/tiles.json?key={key}"
   },
-  "contours": {
-    "type": "vector",
-    "url": "https://example.com/url/to/tile.json"
+  "hillshade": {
+    "type": "raster",
+    "url": "https://example.com/url/to/tile.json",
+	"tileSize": 512
   }
 }
 ```
@@ -26,26 +36,24 @@ Where the tile.json should be something like:
 ```json
 {
 	"attribution": "USGS",
-	"description": "USGS 40' contour lines",
-	"format": "pbf",
-	"id": "contours",
+	"description": "Hillshade generated from 1 arc-second USGS DEM",
+	"format": "png",
+	"id": "hillshade",
 	"maxzoom": 16,
-	"minzoom": 11,
-	"name": "contours",
-	"scheme": "xyz",
-	"tiles": ["https://example.com/url/to/tiles/{z}/{x}/{y}.pbf"],
-	"version": "2.0.0"
+	"minzoom": 0,
+	"name": "hillshade",
+	"scheme": "tms",
+	"tiles": ["https://example.com/url/to/tiles/{z}/{x}/{y}.png"],
+	"version": "2.2.0"
 }
 ```
-
-[contours]: https://www.sciencebase.gov/catalog/items?q=&filter=tags%3DNational+Elevation+Dataset+%28NED%29+1%2F3+arc-second+-+Contours
 
 ## Installation
 
 Clone the repository:
 ```
-git clone https://github.com/nst-guide/contours
-cd contours
+git clone https://github.com/nst-guide/hillshade
+cd hillshade
 ```
 
 This is written to work with Python >= 3.6. To install dependencies:
@@ -53,73 +61,84 @@ This is written to work with Python >= 3.6. To install dependencies:
 pip install click requests
 ```
 
-This also has dependencies on GDAL and
-[`tippecanoe`](https://github.com/mapbox/tippecanoe). I find that the easiest
-way of installing GDAL and tippecanoe is through Conda:
+This also has a dependency on GDAL. I find that the easiest way of installing
+GDAL is through Conda:
 ```
-conda create -n contours python gdal tippecanoe -c conda-forge
-source activate contours
+conda create -n hillshade python gdal -c conda-forge
+source activate hillshade
 pip install click requests
 ```
 
-You can also install GDAL and Tippecanoe via Homebrew on MacOS
+You can also install GDAL via Homebrew on MacOS
 ```
-brew install gdal tippecanoe
+brew install gdal
 ```
 
 ## Code Overview
 
 #### `download.py`
 
-Downloads USGS contour data for a given bounding box.
+Downloads USGS elevation data for a given bounding box.
 
 ```
 python download.py --bbox="west, south, east, north"
 ```
 
 This script calls the [National Map API](https://viewer.nationalmap.gov/tnmaccess/api/index)
-and finds all the 1x1 degree contour products that intersect the given bounding
-box. The script then downloads each of these files to `data/raw/`. By default,
+and finds all the 1x1 degree elevation products that intersect the given bounding
+box. Right now, this uses 1 arc-second data, which has about a 30 meter
+resolution. It would also be possible to use the 1/3 arc-second seamless data,
+which is the best seamless resolution available for the continental US, but
+those file sizes are 9x bigger, so for now I'm just going to generate from the 1
+arc-second.
+
+The script then downloads each of these files to `data/raw/`. By default,
 it doesn't re-download and overwrite a file that already exists. If you wish to
 overwrite an existing file, use `--overwrite`.
 
-#### `to_geojson.sh`
+#### `unzip.sh`
 
-Takes downloaded GeoDatabase contour data from `data/raw/` and uses `ogr2ogr` to
-turn them into GeoJSON line-delimited data, placed in `data/geojson/`. By
-default, it runs `ogr2ogr` on every downloaded GeoDatabase file, and currently
-it's not possible to select only specific files to convert.
+Takes downloaded DEM data from `data/raw/`, unzips it, and places it in `data/unzipped/`.
 
-GeoJSON line-delimited is helpful because that allows Tippecanoe to run in parallel.
+#### `gdaldem`
 
-#### `tippecanoe`
+Use `gdalbuildvrt` to generate a virtual dataset of all DEM tiles, `gdaldem` to
+generate a hillshade, and `gdal2tiles` to cut the output raster into map tiles.
 
-This turns the contour data into Mapbox Vector Tiles, ready to be served.
+`gdaldem` options:
 
-Options:
+- `-multidirectional`:
 
-- `-Z11`: Set the minimum zoom to 11. Tippecanoe won't create any overview tiles.
-- `-zg`: Let Tippecanoe guess the maximum zoom level. It seems from testing that it selects `11`, i.e. that 11 is high enough to represent the contours
-- `-P`: run in parallel. If the GeoJSON files are not line-delimited, won't actually run in parallel.
-- `--extend-zooms-if-still-dropping`: Not sure if this actually does anything since I'm not using `--drop-densest-as-needed`.
-- `-y`: only keep the provided attributes in the MVT. I think the only metadata needed for styling is `FCode`, which determines whether it's a multiple of 200' and should be styled darker, and `ContourElevation`, which stores the elevation itself. I haven't checked if you can do modular arithmetic on the fly in the Mapbox style specification, but if you can then you could leave out `FCode`.
-- `-l`: combine all files into a single layer named `Elev_Contour`. Otherwise, it would create a different layer in the vector tiles for each provided file name
-- `-o`: output file name. If you want a directory of vector tiles instead of a `.mbtiles` file, use `-e`
-- `data/geojson/*.geojson`: path to input data
+    > multidirectional shading, a combination of hillshading illuminated from 225 deg, 270 deg, 315 deg, and 360 deg azimuth.
+- `s` (scale):
+
+    > Ratio of vertical units to horizontal. If the horizontal unit of the
+    > source DEM is degrees (e.g Lat/Long WGS84 projection), you can use
+    > scale=111120 if the vertical units are meters (or scale=370400 if they are
+    > in feet)
+
+    Note that this won't be exact, since those scale conversions are only really
+    valid at the equator, but I had issues warping the VRT to a projection in
+    meters, and it's good enough for now.
+
+`gdal2tiles.py` options:
+
+- `--processes`: number of individual processes to use for generating the base tiles. Change this to a suitable number for your computer.
+- I also use my forked copy of `gdal2tiles.py` in order to generate high-res retina tiles
 
 ## Usage
 
 ```bash
 # Download for Washington state
 python download.py --bbox="-126.7423, 45.54326, -116.9145, 49.00708"
-bash to_geojson.sh
-tippecanoe \
-    -Z11 \
-    -zg \
-    -P \
-    --extend-zooms-if-still-dropping \
-    -y FCode -y ContourElevation \
-    -l Elev_Contour \
-    -o contours.mbtiles \
-    data/geojson/*.geojson
+bash unzip.sh
+# Create seamless DEM:
+gdalbuildvrt data/dem.vrt data/unzipped/*.img
+# Generate hillshade
+gdaldem hillshade -multidirectional -s 111120 data/dem.vrt data/hillshade.tif
+# Cut into tiles
+# I use my own gdal2tiles.py fork for retina 2x 512x512 tiles
+git clone https://github.com/nst-guide/gdal2tiles
+cp gdal2tiles/gdal2tiles.py ./
+./gdal2tiles.py --processes 10 data/hillshade.tif data/hillshade_tiles
 ```
