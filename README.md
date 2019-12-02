@@ -1,6 +1,6 @@
 # Hillshade
 
-Generate hillshade from USGS data.
+Generate hillshade and slope angle shading from USGS data.
 
 ### Terrarium dataset
 
@@ -26,7 +26,8 @@ you want to go that route, set this as your source in your `style.json`:
 I use [OpenMapTiles](https://github.com/openmaptiles/openmaptiles) to create
 self-hosted vector map tiles. However, I'm interested in building a topographic,
 outdoors map. A hillshade layer really helps understand the terrain, and just
-looks pretty.
+looks pretty. A slope-angle shading layer is very helpful when recreating in the
+outdoors for understanding where is more or less safe to travel.
 
 I'll use the 1 arc-second seamless DEM from the USGS.  It would also be possible
 to use the 1/3 arc-second seamless data, which is the best seamless resolution
@@ -153,11 +154,29 @@ python download.py --bbox="-126.7423, 45.54326, -116.9145, 49.00708"
 bash unzip.sh
 # Create seamless DEM:
 gdalbuildvrt data/dem.vrt data/unzipped/*.img
-# Generate hillshade
-gdaldem hillshade -multidirectional -s 111120 data/dem.vrt data/hillshade.tif
-# Cut into tiles
+# Download my fork of gdal2tiles.py
 # I use my own gdal2tiles.py fork for retina 2x 512x512 tiles
 git clone https://github.com/nst-guide/gdal2tiles
 cp gdal2tiles/gdal2tiles.py ./
+```
+
+**Hillshade:**
+```bash
+# Generate hillshade
+gdaldem hillshade -multidirectional -s 111120 data/dem.vrt data/hillshade.tif
+
+# Cut into tiles
 ./gdal2tiles.py --processes 10 data/hillshade.tif data/hillshade_tiles
+```
+
+**Slope angle shading:**
+```bash
+# Generate slope
+gdaldem slope -s 111120 data/dem.vrt data/slope.tif
+
+# Generate color ramp
+gdaldem color-relief -alpha -nearest_color_entry data/slope.tif color_relief.txt data/color_relief.tif
+
+# Cut into tiles
+./gdal2tiles.py --processes 10 data/color_relief.tif data/color_relief_tiles
 ```
