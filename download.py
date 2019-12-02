@@ -25,13 +25,13 @@ def main(bbox, overwrite):
     print(f'Downloading contour datasets for bbox: {bbox}')
     download_dir = Path('data/raw')
     download_dir.mkdir(parents=True, exist_ok=True)
-    local_paths = download_contours(
+    local_paths = download_dem(
         bbox, directory=download_dir, overwrite=overwrite)
     with open('paths.txt', 'w') as f:
         f.writelines(_paths_to_str(local_paths))
 
 
-def download_contours(bbox, directory, overwrite=False):
+def download_dem(bbox, directory, overwrite=False):
     urls = get_urls(bbox)
 
     local_paths = []
@@ -46,9 +46,9 @@ def download_contours(bbox, directory, overwrite=False):
 
 def get_urls(bbox):
     url = 'https://viewer.nationalmap.gov/tnmaccess/api/products'
-    product = 'National Elevation Dataset (NED) 1/3 arc-second - Contours'
+    product = 'National Elevation Dataset (NED) 1 arc-second'
     extent = '1 x 1 degree'
-    fmt = 'FileGDB 10.1'
+    fmt = 'IMG'
 
     params = {
         'datasets': product,
