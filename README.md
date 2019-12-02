@@ -1,8 +1,73 @@
 # contours
 
-Generate vector tile contour data from USGS data
+Generate vector tile contours from USGS data.
 
 ## Overview
+
+I use [OpenMapTiles](https://github.com/openmaptiles/openmaptiles) to self-host
+vector map tiles. However, I'm interested in building a topographic, outdoors
+map, and so I need contour lines. The USGS releases [1x1 degree 40' contour line data][contours]
+generated from their 1/3 arc-second seamless DEM. In order to integrate this data with OpenMapTiles, I need to cut the contour lines into vector tiles, and then I can add them as a separate source in my `style.json`. Something like:
+
+```json
+"sources": {
+  "openmaptiles": {
+    "type": "vector",
+    "url": "https://api.maptiler.com/tiles/v3/tiles.json?key={key}"
+  },
+  "contours": {
+    "type": "vector",
+    "url": "https://example.com/url/to/tile.json"
+  }
+}
+```
+
+Where the tile.json should be something like:
+```json
+{
+	"attribution": "USGS",
+	"description": "USGS 40' contour lines",
+	"format": "pbf",
+	"id": "contours",
+	"maxzoom": 16,
+	"minzoom": 11,
+	"name": "contours",
+	"scheme": "xyz",
+	"tiles": ["https://example.com/url/to/tiles/{z}/{x}/{y}.pbf"],
+	"version": "2.0.0"
+}
+```
+
+[contours]: https://www.sciencebase.gov/catalog/items?q=&filter=tags%3DNational+Elevation+Dataset+%28NED%29+1%2F3+arc-second+-+Contours
+
+## Installation
+
+Clone the repository:
+```
+git clone https://github.com/nst-guide/contours
+cd contours
+```
+
+This is written to work with Python >= 3.6. To install dependencies:
+```
+pip install click requests
+```
+
+This also has dependencies on GDAL and
+[`tippecanoe`](https://github.com/mapbox/tippecanoe). I find that the easiest
+way of installing GDAL and tippecanoe is through Conda:
+```
+conda create -n contours python gdal tippecanoe -c conda-forge
+source activate contours
+pip install click requests
+```
+
+You can also install GDAL and Tippecanoe via Homebrew on MacOS
+```
+brew install gdal tippecanoe
+```
+
+## Code Overview
 
 #### `download.py`
 
