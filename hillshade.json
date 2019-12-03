@@ -1,16 +1,14 @@
 {
-	"attribution": "<a href=\"https://www.usgs.gov/\" target=\"_blank\">© USGS</a>",
-	"description": "Hillshade generated from 1 arc-second USGS DEM",
-	"format": "png",
-	"id": "hillshade",
-	"maxzoom": 10,
-	"minzoom": 3,
-	"name": "hillshade",
-	"scheme": "tms",
-	"tiles": [
-        "https://atiles.nst.guide/hillshade/{z}/{x}/{y}.png",
-        "https://btiles.nst.guide/hillshade/{z}/{x}/{y}.png",
-        "https://ctiles.nst.guide/hillshade/{z}/{x}/{y}.png"
+    "attribution": "<a href=\"https://www.usgs.gov/\" target=\"_blank\">© USGS</a>",
+    "description": "Hillshade generated from 1 arc-second USGS DEM",
+    "format": "png",
+    "id": "hillshade",
+    "maxzoom": 10,
+    "minzoom": 3,
+    "name": "hillshade",
+    "scheme": "tms",
+    "tiles": [
+        "https://tiles.nst.guide/hillshade/{z}/{x}/{y}.png"
     ],
-	"version": "2.2.0"
+    "version": "2.2.0"
 }

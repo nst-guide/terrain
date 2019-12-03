@@ -1,16 +1,14 @@
 {
-	"attribution": "<a href=\"https://www.usgs.gov/\" target=\"_blank\">© USGS</a> <a href=\"https://caltopo.com\" target=\"_blank\">color scheme © Caltopo</a>",
-	"description": "Slope-angle shading generated from 1 arc-second USGS DEM",
-	"format": "png",
-	"id": "slope_angle",
-	"maxzoom": 10,
-	"minzoom": 3,
-	"name": "slope_angle",
-	"scheme": "tms",
-	"tiles": [
-        "https://atiles.nst.guide/slope_angle/{z}/{x}/{y}.png",
-        "https://btiles.nst.guide/slope_angle/{z}/{x}/{y}.png",
-        "https://ctiles.nst.guide/slope_angle/{z}/{x}/{y}.png"
+    "attribution": "<a href=\"https://www.usgs.gov/\" target=\"_blank\">© USGS</a> <a href=\"https://caltopo.com\" target=\"_blank\">color scheme © Caltopo</a>",
+    "description": "Slope-angle shading generated from 1 arc-second USGS DEM",
+    "format": "png",
+    "id": "slope_angle",
+    "maxzoom": 10,
+    "minzoom": 3,
+    "name": "slope_angle",
+    "scheme": "tms",
+    "tiles": [
+        "https://tiles.nst.guide/slope_angle/{z}/{x}/{y}.png"
     ],
-	"version": "2.2.0"
+    "version": "2.2.0"
 }
