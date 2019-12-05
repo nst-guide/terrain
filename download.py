@@ -20,19 +20,34 @@ import requests
     is_flag=True,
     default=False,
     help="Re-download and overwrite existing files.")
-def main(bbox, overwrite):
+@click.option(
+    '--high_res',
+    is_flag=True,
+    default=False,
+    help="Download high-res 1/3 arc-second DEM.")
+def main(bbox, overwrite, high_res):
     bbox = tuple(map(float, re.split(r'[, ]+', bbox)))
     print(f'Downloading Digital Elevation Models for bbox: {bbox}')
-    download_dir = Path('data/raw')
+    if high_res:
+        download_dir = Path('data/raw_hr')
+    else:
+        download_dir = Path('data/raw')
     download_dir.mkdir(parents=True, exist_ok=True)
     local_paths = download_dem(
-        bbox, directory=download_dir, overwrite=overwrite)
+        bbox, directory=download_dir, overwrite=overwrite, high_res=high_res)
     with open('paths.txt', 'w') as f:
         f.writelines(_paths_to_str(local_paths))
 
 
-def download_dem(bbox, directory, overwrite=False):
-    urls = get_urls(bbox)
+def download_dem(bbox, directory, overwrite, high_res):
+    """
+    Args:
+        - bbox (tuple): bounding box (west, south, east, north)
+        - directory (pathlib.Path): directory to download files to
+        - overwrite (bool): whether to re-download and overwrite existing files
+        - high_res (bool): If True, downloads high-res 1/3 arc-second DEM
+    """
+    urls = get_urls(bbox, high_res)
 
     local_paths = []
     for url in urls:
@@ -44,9 +59,18 @@ def download_dem(bbox, directory, overwrite=False):
     return local_paths
 
 
-def get_urls(bbox):
+def get_urls(bbox, high_res):
+    """
+    Args:
+        - bbox (tuple): bounding box (west, south, east, north)
+        - high_res (bool): If True, downloads high-res 1/3 arc-second DEM
+    """
     url = 'https://viewer.nationalmap.gov/tnmaccess/api/products'
-    product = 'National Elevation Dataset (NED) 1 arc-second'
+    if high_res:
+        product = 'National Elevation Dataset (NED) 1/3 arc-second'
+    else:
+        product = 'National Elevation Dataset (NED) 1 arc-second'
+
     extent = '1 x 1 degree'
     fmt = 'IMG'
 
