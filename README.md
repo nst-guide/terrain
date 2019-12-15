@@ -2,18 +2,70 @@
 
 Generate hillshade and slope angle shading from USGS data.
 
-### Terrarium dataset
+## Overview
 
-It's also currently possible to use the publicly-hosted Terrarium dataset
-on [AWS Public Datasets](https://registry.opendata.aws/terrain-tiles/) for free.
-This is an easy, quick solution if you don't want to generate your own tiles. If
-you want to go that route, set this as your source in your `style.json`:
+I use [OpenMapTiles](https://github.com/openmaptiles/openmaptiles) to create
+self-hosted vector map tiles. However, I'm interested in building a topographic
+outdoors-oriented map. A hillshade layer really helps understand the terrain, and just
+looks pretty. A slope-angle shading layer is very helpful when recreating in the
+outdoors for understanding where is more or less safe to travel.
+
+### Source data
+
+Since my map is focused on the continental United States, I use data from the US
+Geological Survey (USGS), which is more accurate but limited to the US. If
+you're interested in creating a map with international scope, check out
+[30-meter SRTM data](http://dwtkns.com/srtm30m/), which is generally the most
+accurate worldwide source available.
+
+Regarding the USGS data, they have a few sources available:
+
+- 1 arc-second seamless DEM. This has ~30m horizontal accuracy, which is
+  accurate enough for many purposes, and gives it the smallest file sizes,
+  making it easy to work with.
+- 1/3 arc-second seamless DEM. This dataset has the best precision available
+  (~10m horizontal accuracy) for a seamless dataset. Note that the file sizes
+  are about 9x bigger than the 1 arc-second data, making each 1x1 degree cell
+  about 450MB unzipped.
+- 1/9 arc-second project-based DEM; 1-meter project-based DEM. These have very
+  high horizontal accuracy, but aren't available for the entire US yet. If you
+  want to use these datasets, go to the [National Map download
+  page](https://viewer.nationalmap.gov/basic/), check "Elevation Products
+  (3DEP)", and then click "Show Availability" under the layer you're interested
+  in, so that you can see if they exist for the area you're interested in.
+
+For my purposes, I use the 1 arc-second data initially for testing, but then the
+1/3 arc-second data for production use.
+
+### Terrain RGB
+
+Historically, the way to make a hillshade is to generate raster images where each cell stores the level of grayscale to display.
+
+With Mapbox GL, you have a new option: [Terrain RGB
+tiles](https://docs.mapbox.com/help/troubleshooting/access-elevation-data/#mapbox-terrain-rgb).
+Instead of encoding the grayscale in the raster, it encodes the _raw elevation
+value_ in 0.1m increments. This enables a whole host of cool things to do
+client-side, like retrieving elevation for a point, or [generating the
+viewshed](https://github.com/nst-guide/viewshed-js) from a point (a work in
+progress).
+
+I use Terrain RGB tiles in my projects.
+
+#### Terrarium dataset
+
+If you want to use Terrain RGB tiles, but don't want to create them yourself,
+it's also currently possible to use the publicly-hosted Terrarium dataset on
+[AWS Public Datasets](https://registry.opendata.aws/terrain-tiles/) for free. It
+isn't even in a requester-pays bucket. I don't know how long this will be
+available for free, so I figured I'd just generate my own.
+
+If you want to go that route, set this as your source in your `style.json`:
 
 ```json
 "terrarium": {
   "type": "raster-dem",
   "tiles": [
-	"https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
+  	"https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
   ],
   "minzoom": 0,
   "maxzoom": 15,
@@ -21,22 +73,17 @@ you want to go that route, set this as your source in your `style.json`:
 }
 ```
 
-## Overview
+Note that I believe the Terrarium dataset uses a different encoding than
+Mapbox's RGB tiles.
 
-I use [OpenMapTiles](https://github.com/openmaptiles/openmaptiles) to create
-self-hosted vector map tiles. However, I'm interested in building a topographic,
-outdoors map. A hillshade layer really helps understand the terrain, and just
-looks pretty. A slope-angle shading layer is very helpful when recreating in the
-outdoors for understanding where is more or less safe to travel.
+### Integration with `style.json`
 
-I'll use the 1 arc-second seamless DEM from the USGS. It would also be possible
-to use the 1/3 arc-second seamless data, which is the best seamless resolution
-available for the continental US, but those file sizes are 9x bigger, so for now
-I’m just going to generate from the 1 arc-second.
+The style JSON spec tells Mapbox GL how to style your map. Add the hillshade
+tiles as a source to overlay them with the other sources.
 
-In order to integrate this data with OpenMapTiles, after making the hillshade I
-need to cut it into raster tiles, and then I can add it as a separate source in
-my `style.json`. Something like:
+Within `sources`, each object key defines the name by which the later parts of
+`style.json` should refer to the layer. Note the difference between a normal
+raster layer and the terrain RGB layer.
 
 ```json
 "sources": {
@@ -47,16 +94,25 @@ my `style.json`. Something like:
   "hillshade": {
     "type": "raster",
     "url": "https://example.com/url/to/tile.json",
-	"tileSize": 512
+  	"tileSize": 512
+  },
+  "terrain-rgb": {
+    "type": "raster-dem",
+    "tiles": [
+      "https://example.com/url/to/tiles/{z}/{x}/{y}.png"
+    ],
+    "minzoom": 0,
+    "maxzoom": 12,
+    "encoding": "mapbox"
   }
 }
 ```
 
-Where the tile.json should be something like:
+Where the `tile.json` for a raster layer should be something like:
 
 ```json
 {
-    "attribution": "USGS",
+    "attribution": "<a href=\"https://www.usgs.gov/\" target=\"_blank\">© USGS</a>",
     "description": "Hillshade generated from 1 arc-second USGS DEM",
     "format": "png",
     "id": "hillshade",
@@ -66,6 +122,25 @@ Where the tile.json should be something like:
     "scheme": "tms",
     "tiles": ["https://example.com/url/to/tiles/{z}/{x}/{y}.png"],
     "version": "2.2.0"
+}
+```
+
+Later in the style JSON, refer to the hillshade to style it. Example for terrain
+RGB:
+```json
+{
+  "id": "terrain-rgb",
+  "source": "terrain-rgb",
+  "type": "hillshade",
+  "minzoom": 0,
+  "paint": {
+    "hillshade-shadow-color": "hsl(39, 21%, 33%)",
+    "hillshade-illumination-direction": 315,
+    "hillshade-exaggeration": 0.8
+  },
+  "layout": {
+    "visibility": "visible"
+  }
 }
 ```
 
@@ -165,6 +240,19 @@ gdalbuildvrt data/dem_hr.vrt data/unzipped_hr/*.img
 # I use my own gdal2tiles.py fork for retina 2x 512x512 tiles
 git clone https://github.com/nst-guide/gdal2tiles
 cp gdal2tiles/gdal2tiles.py ./
+```
+
+**Terrain RGB:**
+
+```bash
+# Create a new VRT specifically for the terrain RGB tiles, manually setting the
+# nodata value to be -9999
+gdalbuildvrt -vrtnodata -9999 data/dem_hr_9999.vrt data/unzipped_hr/*.img
+gdalwarp -r cubicspline -s_srs EPSG:4269 -t_srs EPSG:3857 -dstnodata 0 -co COMPRESS=DEFLATE data/dem_hr_9999.vrt data/dem_hr_9999_epsg3857.vrt
+rio rgbify -b -10000 -i 0.1 --min-z 6 --max-z 13 -j 15 --format webp data/dem_hr_9999_epsg3857.vrt data/terrain_webp.mbtiles
+rio rgbify -b -10000 -i 0.1 --min-z 6 --max-z 13 -j 15 --format png data/dem_hr_9999_epsg3857.vrt data/terrain_png.mbtiles
+mb-util data/terrain_webp.mbtiles data/terrain_webp
+mb-util data/terrain_png.mbtiles data/terrain_png
 ```
 
 **Hillshade:**
