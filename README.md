@@ -181,7 +181,15 @@ brew install gdal
 Downloads USGS elevation data for a given bounding box.
 
 ```
-python download.py --bbox="west, south, east, north"
+> python download.py --help
+Usage: download.py [OPTIONS]
+
+Options:
+  --bbox TEXT  Bounding box to download data for. Should be west, south, east,
+               north.  [required]
+  --overwrite  Re-download and overwrite existing files.
+  --high_res   Download high-res 1/3 arc-second DEM.
+  --help       Show this message and exit.
 ```
 
 This script calls the [National Map API](https://viewer.nationalmap.gov/tnmaccess/api/index)
@@ -235,6 +243,8 @@ and optionally download my fork of `gdal2tiles` which allows for creating
 
 ```bash
 # Download for Washington state
+python download.py --bbox="-126.7423, 45.54326, -116.9145, 49.00708"
+# Or, download high-resolution 1/3 arc-second tiles
 python download.py --bbox="-126.7423, 45.54326, -116.9145, 49.00708"
 bash unzip.sh
 # Create seamless DEM:
