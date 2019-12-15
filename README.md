@@ -229,6 +229,10 @@ generate a hillshade, and `gdal2tiles` to cut the output raster into map tiles.
 
 ## Usage
 
+First, download desired DEM tiles, unzip them, build a VRT (Virtual Dataset),
+and optionally download my fork of `gdal2tiles` which allows for creating
+512x512 pngs.
+
 ```bash
 # Download for Washington state
 python download.py --bbox="-126.7423, 45.54326, -116.9145, 49.00708"
@@ -287,11 +291,13 @@ gdaldem color-relief -alpha -nearest_color_entry data/slope_hr.tif color_relief.
 
 ### Bboxes used:
 
--120.8263,32.7254,-116.0826,34.793
--122.4592,35.0792,-117.0546,36.9406
--123.4315,37.0927,-118.0767,37.966
--124.1702,38.0697,-118.5426,38.9483
--124.1702,38.0697,-119.0635,38.9483
--124.5493,39.0475,-120.0647,42.0535
--124.6791,42.0214,-117.0555,46.3334
--124.9103,46.0184,-117.0593,49.0281
+For personal reference:
+
+- `-120.8263,32.7254,-116.0826,34.793`
+- `-122.4592,35.0792,-117.0546,36.9406`
+- `-123.4315,37.0927,-118.0767,37.966`
+- `-124.1702,38.0697,-118.5426,38.9483`
+- `-124.1702,38.0697,-119.0635,38.9483`
+- `-124.5493,39.0475,-120.0647,42.0535`
+- `-124.6791,42.0214,-117.0555,46.3334`
+- `-124.9103,46.0184,-117.0593,49.0281`
