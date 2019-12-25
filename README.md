@@ -245,7 +245,7 @@ and optionally download my fork of `gdal2tiles` which allows for creating
 # Download for Washington state
 python download.py --bbox="-126.7423, 45.54326, -116.9145, 49.00708"
 # Or, download high-resolution 1/3 arc-second tiles
-python download.py --bbox="-126.7423, 45.54326, -116.9145, 49.00708"
+python download.py --bbox="-126.7423, 45.54326, -116.9145, 49.00708" --high_res
 bash unzip.sh
 # Create seamless DEM:
 gdalbuildvrt data/dem.vrt data/unzipped/*.img
