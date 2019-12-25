@@ -156,7 +156,7 @@ cd hillshade
 This is written to work with Python >= 3.6. To install dependencies:
 
 ```
-pip install click requests
+pip install click requests tqdm
 ```
 
 This also has a dependency on GDAL. I find that the easiest way of installing
@@ -165,7 +165,7 @@ GDAL is through Conda:
 ```
 conda create -n hillshade python gdal -c conda-forge
 source activate hillshade
-pip install click requests
+pip install click requests tqdm
 ```
 
 You can also install GDAL via Homebrew on MacOS
