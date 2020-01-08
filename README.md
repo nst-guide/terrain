@@ -283,7 +283,9 @@ gdaldem hillshade -igor -compute_edges -s 111120 data/dem_hr.vrt data/hillshade_
 
 **Slope angle shading:**
 
-Note, the `data/slope_hr.tif` file in this example, comprised of the bounding boxes at the bottom, is a 70GB file itself. Make sure you have enough
+Note, the `data/slope_hr.tif` file in this example, comprised of the bounding
+boxes at the bottom, is a 70GB file itself. Make sure you have enough disk
+space.
 
 ```bash
 # Generate slope
@@ -297,6 +299,31 @@ gdaldem color-relief -alpha -nearest_color_entry data/slope_hr.tif color_relief.
 # Cut into tiles
 ./gdal2tiles.py --processes 10 data/color_relief.tif data/color_relief_tiles
 ./gdal2tiles.py --processes 10 data/color_relief_hr.tif data/color_relief_hr_tiles
+```
+
+Compression:
+
+WebP:
+
+```bash
+cd data/color_relief_hr_tiles
+for f in */*/*.png; do mkdir -p ../color_relief_hr_tiles_webp/$(dirname $f); cwebp $f -q 80 -o ../color_relief_hr_tiles_webp/$f ; done
+```
+
+PNG:
+
+```bash
+cd data/color_relief_hr_tiles
+find . -name '*.png' -print0 | xargs -0 -P8 -L1 pngquant --ext -comp.png --quality=70-80
+mkdir ../color_relief_hr_tiles_png
+# First move all tiles with extension -comp.png to the new directory
+# Take out --remove-source-files if you want to copy, not move the files
+# I use rsync because I couldn't figure out an easy way with `mv` to move while
+# keeping the directory structure.
+rsync -a --remove-source-files --include "*/" --include="*-comp.png" --exclude="*" . ../color_relief_hr_tiles_png/
+# Then rename all of the files, taking off the -comp suffix
+cd ../color_relief_hr_tiles_png
+find . -type f -name "*-comp.png" -exec rename -s '-comp.png' '.png' {} +
 ```
 
 ### Bboxes used:
