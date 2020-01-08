@@ -313,17 +313,11 @@ for f in */*/*.png; do mkdir -p ../color_relief_hr_tiles_webp/$(dirname $f); cwe
 PNG:
 
 ```bash
-cd data/color_relief_hr_tiles
-find . -name '*.png' -print0 | xargs -0 -P8 -L1 pngquant --ext -comp.png --quality=70-80
-mkdir ../color_relief_hr_tiles_png
-# First move all tiles with extension -comp.png to the new directory
-# Take out --remove-source-files if you want to copy, not move the files
-# I use rsync because I couldn't figure out an easy way with `mv` to move while
-# keeping the directory structure.
-rsync -a --remove-source-files --include "*/" --include="*-comp.png" --exclude="*" . ../color_relief_hr_tiles_png/
-# Then rename all of the files, taking off the -comp suffix
-cd ../color_relief_hr_tiles_png
-find . -type f -name "*-comp.png" -exec rename -s '-comp.png' '.png' {} +
+# Make copy of png files
+cp -r data/color_relief_hr_tiles data/color_relief_hr_tiles_png
+cd data/color_relief_hr_tiles_png
+# Overwrite in place if it can be done without too much quality loss
+find . -name '*.png' -print0 | xargs -0 -P8 -L1 pngquant -f --ext .png --quality=70-80 --skip-if-larger
 ```
 
 ### Bboxes used:
