@@ -1,14 +1,14 @@
-# Hillshade
+# Terrain
 
-Generate hillshade and slope angle shading from USGS data.
+Generate contours, hillshade, Terrain RGB, and slope angle shading map tiles
+from Digital Elevation Models (DEMs).
 
 ## Overview
 
 I use [OpenMapTiles](https://github.com/openmaptiles/openmaptiles) to create
 self-hosted vector map tiles. However, I'm interested in building a topographic
-outdoors-oriented map. A hillshade layer really helps understand the terrain, and just
-looks pretty. A slope-angle shading layer is very helpful when recreating in the
-outdoors for understanding where is more or less safe to travel.
+outdoors-oriented map. Contours, hillshading, and slope-angle shading are
+instrumental in intuitively understanding the terrain.
 
 ### Source data
 
@@ -20,14 +20,14 @@ accurate worldwide source available.
 
 Regarding the USGS data, they have a few sources available:
 
-- 1 arc-second seamless DEM. This has ~30m horizontal accuracy, which is
+- **1 arc-second seamless DEM**. This has ~30m horizontal accuracy, which is
   accurate enough for many purposes, and gives it the smallest file sizes,
   making it easy to work with.
-- 1/3 arc-second seamless DEM. This dataset has the best precision available
+- **1/3 arc-second seamless DEM**. This dataset has the best precision available
   (~10m horizontal accuracy) for a seamless dataset. Note that the file sizes
   are about 9x bigger than the 1 arc-second data, making each 1x1 degree cell
   about 450MB unzipped.
-- 1/9 arc-second project-based DEM; 1-meter project-based DEM. These have very
+- **1/9 arc-second project-based DEM and 1-meter project-based DEM**. These have very
   high horizontal accuracy, but aren't available for the entire US yet. If you
   want to use these datasets, go to the [National Map download
   page](https://viewer.nationalmap.gov/basic/), check "Elevation Products
@@ -35,7 +35,9 @@ Regarding the USGS data, they have a few sources available:
   in, so that you can see if they exist for the area you're interested in.
 
 For my purposes, I use the 1 arc-second data initially for testing, but then the
-1/3 arc-second data for production use.
+1/3 arc-second data for production use. In a couple years, once more of the
+United States is mapped at 1 meter resolution, I'd suggest considering using 1
+meter data where available.
 
 ### Terrain RGB
 
@@ -45,9 +47,8 @@ With Mapbox GL, you have a new option: [Terrain RGB
 tiles](https://docs.mapbox.com/help/troubleshooting/access-elevation-data/#mapbox-terrain-rgb).
 Instead of encoding the grayscale in the raster, it encodes the _raw elevation
 value_ in 0.1m increments. This enables a whole host of cool things to do
-client-side, like retrieving elevation for a point, or [generating the
-viewshed](https://github.com/nst-guide/viewshed-js) from a point (a work in
-progress).
+client-side, like retrieving elevation for a point, or generating the viewshed
+from a point.
 
 I use Terrain RGB tiles in my projects.
 
@@ -59,7 +60,8 @@ it's also currently possible to use the publicly-hosted Terrarium dataset on
 isn't even in a requester-pays bucket. I don't know how long this will be
 available for free, so I figured I'd just generate my own.
 
-If you want to go that route, set this as your source in your `style.json`:
+If you want to go that route, set this as your source in your `style.json` (note
+`"encoding": "terrarium"`):
 
 ```json
 "terrarium": {
@@ -206,7 +208,8 @@ overwrite an existing file, use `--overwrite`.
 
 #### `unzip.sh`
 
-Takes downloaded DEM data from `data/raw/`, unzips it, and places it in `data/unzipped/`.
+Takes downloaded DEM data from `data/raw/` or `data/raw_hr/`, unzips it, and
+places it in `data/unzipped/` or `data/unzipped_hr/`.
 
 #### `gdaldem`
 
@@ -301,7 +304,105 @@ gdaldem color-relief -alpha -nearest_color_entry data/slope_hr.tif color_relief.
 ./gdal2tiles.py --processes 10 data/color_relief_hr.tif data/color_relief_hr_tiles
 ```
 
-Compression:
+**Contours:**
+
+```bash
+# Reproject to EPSG 4326 and also convert data type from float32 to int16
+# This solves an out-of-memory error I was encountering with the original
+# floating point data
+gdalwarp \
+    -r cubicspline \
+    -t_srs EPSG:4326 \
+    -ot Int16 \
+    -dstnodata -32768 \
+    data/dem_hr.vrt data/dem_hr_wgs84.vrt
+
+# Generate 10m contours
+gdal_contour \
+    `# Put elevation values into 'ele_m'` \
+    -a ele_m \
+    `# Generate contour line every 10 meters` \
+    -i 10 \
+    `# Export to newline-delimited GeoJSON, so Tippecanoe can read in parallel` \
+    -f GeoJSONSeq \
+    data/dem_hr_wgs84.vrt data/contour_10m.geojson
+
+# Run tippecanoe on 10m contours
+tippecanoe \
+    `# Set min zoom to 11` \
+    -Z11 \
+    `# Set max zoom to 11` \
+    -z11 \
+    `# Read features in parallel; only works with GeoJSONSeq input` \
+    -P \
+    `# Keep only the ele_m attribute` \
+    -y ele_m \
+    `# Put contours into layer named 'contour_10m'` \
+    -l contour_10m \
+    `# Export to contour_10m.mbtiles` \
+    -o data/contour_10m.mbtiles \
+    data/contour_10m.geojson
+
+# Convert DEM to feet
+# gdal_translate is preferable over gdal_calc.py, because the latter can't write
+# to a VRT
+# https://geozoneblog.wordpress.com/2016/06/20/converting-vertical-units-dem/d
+gdal_translate \
+    -scale 0 0.3048 0 1 \
+    data/dem_hr_wgs84.vrt data/dem_hr_wgs84_feet.vrt
+
+# Generate 40ft contours
+gdal_contour \
+    `# Put elevation values into 'ele_ft'` \
+    -a ele_ft \
+    `# Generate contour line every 40 feet` \
+    -i 40 \
+    `# Export to newline-delimited GeoJSON, so Tippecanoe can read in parallel` \
+    -f GeoJSONSeq \
+    data/dem_hr_wgs84_feet.vrt data/contour_40ft.geojson
+
+# Run tippecanoe on 40ft contours
+tippecanoe \
+    `# Set min zoom to 11` \
+    -Z11 \
+    `# Set max zoom to 11` \
+    -z11 \
+    `# Read features in parallel; only works with GeoJSONSeq input` \
+    -P \
+    `# Keep only the ele_m attribute` \
+    -y ele_ft \
+    `# Put contours into layer named 'contour_40ft'` \
+    -l contour_40ft \
+    `# Export to contour_40ft.mbtiles` \
+    -o contour_40ft.mbtiles \
+    contour_40ft.geojson
+```
+
+I tend to export to an `mbtiles` file, because then it's easy to inspect the
+generated data with [`mbview`](https://github.com/mapbox/mbview), however I use
+[`mb-util`](https://github.com/mapbox/mbutil) to convert the `mbtiles` to a
+directory for uploading to S3.
+```bash
+mb-util contour_10m.mbtiles contour_10m --image_format=pbf
+mb-util contour_40ft.mbtiles contour_40ft --image_format=pbf
+```
+
+And then to upload to S3:
+```bash
+aws s3 cp \
+    . s3://tiles.nst.guide/contour_10m/ \
+    --recursive \
+    --content-type application/x-protobuf \
+    --content-encoding "gzip"
+aws s3 cp \
+    . s3://tiles.nst.guide/contour_40ft/ \
+    --recursive \
+    --content-type application/x-protobuf \
+    --content-encoding "gzip"
+```
+
+
+#### Compression:
 
 WebP:
 
