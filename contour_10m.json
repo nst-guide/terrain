@@ -1,0 +1,13 @@
+{
+    "tilejson": "2.2.0",
+    "name": "contour_10m",
+    "description": "10 meter contour lines from USGS 1/3 arc-second DEM",
+    "version": "0.1.0",
+    "attribution": "<a href=\"https://www.usgs.gov/\" target=\"_blank\">© USGS</a>",
+    "scheme": "xyz",
+    "tiles": [
+        "https://tiles.nst.guide/contour_10m/{z}/{x}/{y}.pbf"
+    ],
+    "minzoom": 11,
+    "maxzoom": 11
+}
