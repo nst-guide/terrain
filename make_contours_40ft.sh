@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 
 path=$1
-out_dir=$2
+out_dir="data/contour_40ft"
 temp_dir=$(mktemp -d)
 mkdir -p $out_dir
 

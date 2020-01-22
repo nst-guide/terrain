@@ -307,25 +307,9 @@ gdaldem color-relief -alpha -nearest_color_entry data/slope_hr.tif color_relief.
 **Contours:**
 
 ```bash
-# Reproject to EPSG 4326 and also convert data type from float32 to int16
-# This solves an out-of-memory error I was encountering with the original
-# floating point data
-gdalwarp \
-    -r cubicspline \
-    -t_srs EPSG:4326 \
-    -ot Int16 \
-    -dstnodata -32768 \
-    data/dem_hr.vrt data/dem_hr_wgs84.vrt
-
-# Generate 10m contours
-gdal_contour \
-    `# Put elevation values into 'ele_m'` \
-    -a ele_m \
-    `# Generate contour line every 10 meters` \
-    -i 10 \
-    `# Export to newline-delimited GeoJSON, so Tippecanoe can read in parallel` \
-    -f GeoJSONSeq \
-    data/dem_hr_wgs84.vrt data/contour_10m.geojson
+cpus=14
+find data/unzipped_hr/ -type f -name '*.img' -print0 | xargs -0 -P $cpus -L1 bash make_contours_10m.sh
+find data/unzipped_hr/ -type f -name '*.img' -print0 | xargs -0 -P $cpus -L1 bash make_contours_40ft.sh
 
 # Run tippecanoe on 10m contours
 tippecanoe \
@@ -341,25 +325,7 @@ tippecanoe \
     -l contour_10m \
     `# Export to contour_10m.mbtiles` \
     -o data/contour_10m.mbtiles \
-    data/contour_10m.geojson
-
-# Convert DEM to feet
-# gdal_translate is preferable over gdal_calc.py, because the latter can't write
-# to a VRT
-# https://geozoneblog.wordpress.com/2016/06/20/converting-vertical-units-dem/d
-gdal_translate \
-    -scale 0 0.3048 0 1 \
-    data/dem_hr_wgs84.vrt data/dem_hr_wgs84_feet.vrt
-
-# Generate 40ft contours
-gdal_contour \
-    `# Put elevation values into 'ele_ft'` \
-    -a ele_ft \
-    `# Generate contour line every 40 feet` \
-    -i 40 \
-    `# Export to newline-delimited GeoJSON, so Tippecanoe can read in parallel` \
-    -f GeoJSONSeq \
-    data/dem_hr_wgs84_feet.vrt data/contour_40ft.geojson
+    data/contour_10m/*.geojson
 
 # Run tippecanoe on 40ft contours
 tippecanoe \
@@ -375,7 +341,7 @@ tippecanoe \
     -l contour_40ft \
     `# Export to contour_40ft.mbtiles` \
     -o contour_40ft.mbtiles \
-    contour_40ft.geojson
+    data/contour_40ft/*.geojson
 ```
 
 I tend to export to an `mbtiles` file, because then it's easy to inspect the
@@ -383,19 +349,19 @@ generated data with [`mbview`](https://github.com/mapbox/mbview), however I use
 [`mb-util`](https://github.com/mapbox/mbutil) to convert the `mbtiles` to a
 directory for uploading to S3.
 ```bash
-mb-util contour_10m.mbtiles contour_10m --image_format=pbf
-mb-util contour_40ft.mbtiles contour_40ft --image_format=pbf
+mb-util data/contour_10m.mbtiles data/contour_10m_tiles --image_format=pbf
+mb-util data/contour_40ft.mbtiles data/contour_40ft_tiles --image_format=pbf
 ```
 
 And then to upload to S3:
 ```bash
 aws s3 cp \
-    . s3://tiles.nst.guide/contour_10m/ \
+    data/contour_10m_tiles s3://tiles.nst.guide/contour_10m/ \
     --recursive \
     --content-type application/x-protobuf \
     --content-encoding "gzip"
 aws s3 cp \
-    . s3://tiles.nst.guide/contour_40ft/ \
+    data/contour_40ft_tiles s3://tiles.nst.guide/contour_40ft/ \
     --recursive \
     --content-type application/x-protobuf \
     --content-encoding "gzip"
