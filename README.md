@@ -308,7 +308,9 @@ gdaldem color-relief -alpha -nearest_color_entry data/slope_hr.tif color_relief.
 
 ```bash
 cpus=14
+# Writes GeoJSON contours for each DEM file to data/contour_10m/*.geojson
 find data/unzipped_hr/ -type f -name '*.img' -print0 | xargs -0 -P $cpus -L1 bash make_contours_10m.sh
+# Writes GeoJSON contours for each DEM file to data/contour_40ft/*.geojson
 find data/unzipped_hr/ -type f -name '*.img' -print0 | xargs -0 -P $cpus -L1 bash make_contours_40ft.sh
 
 # Run tippecanoe on 10m contours
