@@ -29,6 +29,7 @@ gdalwarp \
 # to a VRT
 # https://geozoneblog.wordpress.com/2016/06/20/converting-vertical-units-dem/d
 gdal_translate \
+    -q \
     -scale 0 0.3048 0 1 \
     $temp_dir/${filename}_wgs84.vrt $temp_dir/${filename}_wgs84_feet.vrt
 
