@@ -5,6 +5,7 @@ data/
 paths.json
 paths.txt
 *.mbtiles
+*.mbtiles-journal
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

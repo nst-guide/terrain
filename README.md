@@ -13,10 +13,11 @@ instrumental in intuitively understanding the terrain.
 ### Source data
 
 Since my map is focused on the continental United States, I use data from the US
-Geological Survey (USGS), which is more accurate but limited to the US. If
+Geological Survey (USGS), which has high accuracy but is limited to the US. If
 you're interested in creating a map with international scope, check out
 [30-meter SRTM data](http://dwtkns.com/srtm30m/), which is generally the most
-accurate worldwide source available.
+accurate worldwide source available. Most of the code in this repository is
+applicable to other DEM sources with few modifications.
 
 Regarding the USGS data, they have a few sources available:
 
@@ -39,9 +40,10 @@ For my purposes, I use the 1 arc-second data initially for testing, but then the
 United States is mapped at 1 meter resolution, I'd suggest considering using 1
 meter data where available.
 
-### Terrain RGB
+### Terrain RGB vs Raster Hillshade
 
-Historically, the way to make a hillshade is to generate raster images where each cell stores the level of grayscale to display.
+Historically, the way to make a hillshade is to generate raster images where
+each cell stores the level of grayscale to display.
 
 With Mapbox GL, you have a new option: [Terrain RGB
 tiles](https://docs.mapbox.com/help/troubleshooting/access-elevation-data/#mapbox-terrain-rgb).
@@ -50,7 +52,8 @@ value_ in 0.1m increments. This enables a whole host of cool things to do
 client-side, like retrieving elevation for a point, or generating the viewshed
 from a point.
 
-I use Terrain RGB tiles in my projects.
+I currently exclusively use Terrain RGB tiles in my projects because it allows for
+the possibility of doing cool things in the future if I have time.
 
 #### Terrarium dataset
 
@@ -75,8 +78,41 @@ If you want to go that route, set this as your source in your `style.json` (note
 }
 ```
 
-Note that I believe the Terrarium dataset uses a different encoding than
-Mapbox's RGB tiles.
+Note that the Terrarium dataset uses a different encoding than Mapbox's RGB
+tiles.
+
+### Contours
+
+I originally generated contours vector tiles straight from USGS vector data
+([https://github.com/nst-guide/contours](https://github.com/nst-guide/contours)).
+These downloads have contour lines pregenerated in vector format, and so are quite
+easy to work with; just download, run `ogr2ogr` to convert to GeoJSON, and then
+run `tippecanoe` to convert to vector tiles.
+
+There are a couple drawbacks of using the USGS vector contour data:
+
+1. Inconsistent vertical spacing. In some areas, I found that the data included
+    10' contours, while others had a precision of only _80'_. Since I desired a
+    40' contour, this meant that there were occasionally visual discontinuities
+    in the map between tiles with source data of at least 40' precision and
+    source data of less than 40' precision.
+2. Metric contours. Although I'm currently making maps of the United States,
+    where imperial measurements are the standard, it's desirable to provide
+    metric measurements as well. With Mapbox GL, it's quite easy to write a
+    style expression that converts feet into meters, but the _spacing_ of the
+    contour lines will still be in feet. If neighboring imperial contour lines
+    are 2000 feet and 2040 feet, displaying those same lines on a metric map
+    would represent unintuitive values of 609.6 meters and 621.8 meters.
+
+    In order to display metric contour lines, it is necessary to generate a
+    separate set of contours with lines that represent 100 meters, 110 meters,
+    etc. This must be generated from the original DEMs.
+
+### Slope-angle shading
+
+Slope angle shading displays polygons representing the slope of the terrain in
+degrees. This is just a couple of GDAL functions joined with a color scheme that
+roughly matches the one from [Caltopo](http://caltopo.com/).
 
 ### Integration with `style.json`
 
@@ -89,20 +125,19 @@ raster layer and the terrain RGB layer.
 
 ```json
 "sources": {
-  "openmaptiles": {
+  "contours": {
     "type": "vector",
-    "url": "https://api.maptiler.com/tiles/v3/tiles.json?key={key}"
+    "url": "https://example.com/contours/tile.json"
   },
-  "hillshade": {
+  "slope_angle": {
     "type": "raster",
-    "url": "https://example.com/url/to/tile.json",
+    "url": "https://example.com/slope_angle/tile.json",
   	"tileSize": 512
   },
   "terrain-rgb": {
     "type": "raster-dem",
-    "tiles": [
-      "https://example.com/url/to/tiles/{z}/{x}/{y}.png"
-    ],
+    "url": "https://example.com/terrain_rgb/tile.json",
+    "tileSize": 512,
     "minzoom": 0,
     "maxzoom": 12,
     "encoding": "mapbox"
@@ -134,14 +169,10 @@ RGB:
   "id": "terrain-rgb",
   "source": "terrain-rgb",
   "type": "hillshade",
-  "minzoom": 0,
   "paint": {
     "hillshade-shadow-color": "hsl(39, 21%, 33%)",
     "hillshade-illumination-direction": 315,
     "hillshade-exaggeration": 0.8
-  },
-  "layout": {
-    "visibility": "visible"
   }
 }
 ```
@@ -151,8 +182,8 @@ RGB:
 Clone the repository:
 
 ```
-git clone https://github.com/nst-guide/hillshade
-cd hillshade
+git clone https://github.com/nst-guide/terrain
+cd terrain
 ```
 
 This is written to work with Python >= 3.6. To install dependencies:
@@ -165,8 +196,8 @@ This also has a dependency on GDAL. I find that the easiest way of installing
 GDAL is through Conda:
 
 ```
-conda create -n hillshade python gdal -c conda-forge
-source activate hillshade
+conda create -n terrain python gdal -c conda-forge
+source activate terrain
 pip install click requests tqdm
 ```
 
@@ -211,38 +242,17 @@ overwrite an existing file, use `--overwrite`.
 Takes downloaded DEM data from `data/raw/` or `data/raw_hr/`, unzips it, and
 places it in `data/unzipped/` or `data/unzipped_hr/`.
 
-#### `gdaldem`
-
-Use `gdalbuildvrt` to generate a virtual dataset of all DEM tiles, `gdaldem` to
-generate a hillshade, and `gdal2tiles` to cut the output raster into map tiles.
-
-`gdaldem` options:
-
--   `-multidirectional`:
-
-    > multidirectional shading, a combination of hillshading illuminated from 225 deg, 270 deg, 315 deg, and 360 deg azimuth.
-
--   `s` (scale):
-
-    > Ratio of vertical units to horizontal. If the horizontal unit of the
-    > source DEM is degrees (e.g Lat/Long WGS84 projection), you can use
-    > scale=111120 if the vertical units are meters (or scale=370400 if they are
-    > in feet)
-
-    Note that this won't be exact, since those scale conversions are only really
-    valid at the equator, but I had issues warping the VRT to a projection in
-    meters, and it's good enough for now.
-
-`gdal2tiles.py` options:
-
--   `--processes`: number of individual processes to use for generating the base tiles. Change this to a suitable number for your computer.
--   I also use my forked copy of `gdal2tiles.py` in order to generate high-res retina tiles
-
 ## Usage
 
-First, download desired DEM tiles, unzip them, build a VRT (Virtual Dataset),
+### Preparation
+
+Download desired DEM tiles, then unzip them, build a VRT (Virtual Dataset),
 and optionally download my fork of `gdal2tiles` which allows for creating
 512x512 pngs.
+
+If you're not using data from the USGS, you'll need to figure out which DEMs to
+download yourself. The files should be geospatially adjacent so that there are
+no holes in the generated map data.
 
 ```bash
 # Download for Washington state
@@ -259,32 +269,100 @@ git clone https://github.com/nst-guide/gdal2tiles
 cp gdal2tiles/gdal2tiles.py ./
 ```
 
-**Terrain RGB:**
+### Terrain RGB
 
 ```bash
 # Create a new VRT specifically for the terrain RGB tiles, manually setting the
 # nodata value to be -9999
-gdalbuildvrt -vrtnodata -9999 data/dem_hr_9999.vrt data/unzipped_hr/*.img
-gdalwarp -r cubicspline -s_srs EPSG:4269 -t_srs EPSG:3857 -dstnodata 0 -co COMPRESS=DEFLATE data/dem_hr_9999.vrt data/dem_hr_9999_epsg3857.vrt
-rio rgbify -b -10000 -i 0.1 --min-z 6 --max-z 13 -j 15 --format webp data/dem_hr_9999_epsg3857.vrt data/terrain_webp.mbtiles
-rio rgbify -b -10000 -i 0.1 --min-z 6 --max-z 13 -j 15 --format png data/dem_hr_9999_epsg3857.vrt data/terrain_png.mbtiles
+gdalbuildvrt \
+    `# Set the VRT's nodata value to -9999` \
+    -vrtnodata -9999 \
+    data/dem_hr_9999.vrt data/unzipped_hr/*.img
+# Reproject DEM to web mercator
+gdalwarp \
+    `# Use cubicspline averaging` \
+    -r cubicspline \
+    `# Source projection is EPSG 4269` \
+    -s_srs EPSG:4269 \
+    `# Source projection is EPSG 3857, aka web mercator` \
+    -t_srs EPSG:3857 \
+    `# Set the destination nodata value to 0` \
+    -dstnodata 0 \
+    `# Not sure if this does anything outputting to vrt, with TIFF output should compress` \
+    -co COMPRESS=DEFLATE \
+    data/dem_hr_9999.vrt data/dem_hr_9999_epsg3857.vrt
+# Create Mbtiles of terrain rgb data
+rio rgbify \
+    `# set the base value rgb(0,0,0) to -10000` \
+    -b -10000 \
+    `# Set the increment to 0.1 meters` \
+    -i 0.1 \
+    `# Set 6 as minimum zoom level to make tiles` \
+    --min-z 6 \
+    `# Set 13 as maximum zoom level to make tiles (inclusive)` \
+    --max-z 13 \
+    `# Use 15 cores` \
+    -j 15 \
+    `# Create webp images` \
+    --format webp \
+    data/dem_hr_9999_epsg3857.vrt data/terrain_webp.mbtiles
+rio rgbify \
+    `# set the base value rgb(0,0,0) to -10000` \
+    -b -10000 \
+    `# Set the increment to 0.1 meters` \
+    -i 0.1 \
+    `# Set 6 as minimum zoom level to make tiles` \
+    --min-z 6 \
+    `# Set 13 as maximum zoom level to make tiles (inclusive)` \
+    --max-z 13 \
+    `# Use 15 cores` \
+    -j 15 \
+    `# Create png images` \
+    --format png \
+    data/dem_hr_9999_epsg3857.vrt data/terrain_png.mbtiles
+# Export mbtiles to a directory
+# Ideally, I'd use --image_format=webp, but I forgot to do that the first time,
+# and don't want to recreate and re-upload all the images, so my WebP images
+# have .png extensions (the default)
 mb-util data/terrain_webp.mbtiles data/terrain_webp
 mb-util data/terrain_png.mbtiles data/terrain_png
 ```
 
-**Hillshade:**
+### Hillshade
+
+Use `gdaldem` to generate a hillshade, and `gdal2tiles` to cut the output raster
+into map tiles.
+
+`gdaldem` options:
+
+-   `s` (scale):
+
+    > Ratio of vertical units to horizontal. If the horizontal unit of the
+    > source DEM is degrees (e.g Lat/Long WGS84 projection), you can use
+    > scale=111120 if the vertical units are meters (or scale=370400 if they are
+    > in feet)
+
+    Note that this won't be exact, since those scale conversions are only really
+    valid at the equator, but I had issues warping the VRT to a projection in
+    meters, and it's good enough for now.
 
 ```bash
 # Generate hillshade
-gdaldem hillshade -multidirectional -s 111120 data/dem.vrt data/hillshade.tif
-gdaldem hillshade -igor -compute_edges -s 111120 data/dem_hr.vrt data/hillshade_igor_hr.tif
+gdaldem hillshade \
+    `# multidirectional shading, a combination of hillshading illuminated from 225 deg, 270 deg, 315 deg, and 360 deg azimuth` \
+    -multidirectional \
+    `# scale; ratio of vertical units to horizontal. `
+    -s 111120 data/dem.vrt data/hillshade.tif
+gdaldem hillshade \
+    -igor -compute_edges \
+    -s 111120 data/dem_hr.vrt data/hillshade_igor_hr.tif
 
 # Cut into tiles
 ./gdal2tiles.py --processes 10 data/hillshade.tif data/hillshade_tiles
 ./gdal2tiles.py --processes 10 data/hillshade_igor_hr.tif data/hillshade_igor_hr_tiles
 ```
 
-**Slope angle shading:**
+### Slope angle shading
 
 Note, the `data/slope_hr.tif` file in this example, comprised of the bounding
 boxes at the bottom, is a 70GB file itself. Make sure you have enough disk
@@ -304,7 +382,7 @@ gdaldem color-relief -alpha -nearest_color_entry data/slope_hr.tif color_relief.
 ./gdal2tiles.py --processes 10 data/color_relief_hr.tif data/color_relief_hr_tiles
 ```
 
-**Contours:**
+### Contours
 
 ```bash
 cpus=14
@@ -317,14 +395,16 @@ find data/unzipped_hr/ -type f -name '*.img' -print0 | xargs -0 -P $cpus -L1 bas
 tippecanoe \
     `# Set min zoom to 11` \
     -Z11 \
-    `# Set max zoom to 11` \
-    -z11 \
+    `# Set max zoom to 13` \
+    -z13 \
     `# Read features in parallel; only works with GeoJSONSeq input` \
     -P \
     `# Keep only the ele_m attribute` \
     -y ele_m \
     `# Put contours into layer named 'contour_10m'` \
     -l contour_10m \
+    `# Filter contours at different zoom levels` \
+    -C 'if [[ $1 -le 11 ]]; then jq "if .properties.ele_m % 50 == 0 then . else {} end"; elif [[ $1 -eq 12 ]]; then jq "if .properties.ele_m % 25 == 0 then . else {} end"; else jq "."; fi' \
     `# Export to contour_10m.mbtiles` \
     -o data/contour_10m.mbtiles \
     data/contour_10m/*.geojson
@@ -333,16 +413,18 @@ tippecanoe \
 tippecanoe \
     `# Set min zoom to 11` \
     -Z11 \
-    `# Set max zoom to 11` \
-    -z11 \
+    `# Set max zoom to 13` \
+    -z13 \
     `# Read features in parallel; only works with GeoJSONSeq input` \
     -P \
-    `# Keep only the ele_m attribute` \
+    `# Keep only the ele_ft attribute` \
     -y ele_ft \
     `# Put contours into layer named 'contour_40ft'` \
     -l contour_40ft \
+    `# Filter contours at different zoom levels` \
+    -C 'if [[ $1 -le 11 ]]; then jq "if .properties.ele_ft % 200 == 0 then . else {} end"; elif [[ $1 -eq 12 ]]; then jq "if .properties.ele_ft % 100 == 0 then . else {} end"; else jq "."; fi' \
     `# Export to contour_40ft.mbtiles` \
-    -o contour_40ft.mbtiles \
+    -o data/contour_40ft.mbtiles \
     data/contour_40ft/*.geojson
 ```
 
@@ -361,16 +443,31 @@ aws s3 cp \
     data/contour_10m_tiles s3://tiles.nst.guide/contour_10m/ \
     --recursive \
     --content-type application/x-protobuf \
-    --content-encoding "gzip"
+    --content-encoding "gzip" \
+    `# two week max-age, one year swr` \
+    --cache-control "public, max-age=1209600, stale-while-revalidate=31536000"
 aws s3 cp \
     data/contour_40ft_tiles s3://tiles.nst.guide/contour_40ft/ \
     --recursive \
     --content-type application/x-protobuf \
-    --content-encoding "gzip"
+    --content-encoding "gzip" \
+    `# two week max-age, one year swr` \
+    --cache-control "public, max-age=1209600, stale-while-revalidate=31536000"
 ```
 
 
-#### Compression:
+### Compression:
+
+The only output for which I apply compression is the slope angle shading. (If
+you're generating plain non-Terrain RGB hillshading I'd compress those too).
+
+Vector tiles generated by Tippecanoe are gzip compressed by default, and Terrain
+RGB tiles can't be lossily compressed because that would remove the meaning of
+the encoding. PNG and WebP are both already losslessly compressed.
+
+For slope angle shading, I generate lossy WebP tiles and also generate lossy PNG
+tiles with pngquant. I actually found that the lossy png files are slightly
+smaller than the lossy WebP files in this instance, to my surprise.
 
 WebP:
 
