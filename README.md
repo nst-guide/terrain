@@ -384,6 +384,42 @@ gdaldem color-relief -alpha -nearest_color_entry data/slope_hr.tif color_relief.
 
 ### Contours
 
+Originally I tried to generate contours by creating a single VRT and then
+running `gdal_contour` on it. That fully exhausted the memory and swap on my
+computer, however. It's also (usually) unnecessary because Tippecanoe can join features
+from neighboring cells. So there's no benefit to having a single huge contour
+file over many smaller ones.
+
+Instead, I loop over all downloaded DEM files and run `gdalwarp` and
+`gdal_contour` on each one. The definitions for each command are stored in
+`make_contours_{10m,40ft}.sh`. Generating contours for each DEM file separately
+also has the benefit that it can parallelize. `gdal_contour` appears to be
+singlethreaded, while `find` + `xargs` can be run on an arbitrary number of
+cores. Memory use is not exceedingly high when contours are created for a single
+DEM file.
+
+After the above, I have folders `data/contour_10m/` and `data/contour_40ft` of
+contour lines as GeoJSON LineStrings and MultiLineStrings.
+
+Originally I generated contours with all data encoded at zoom 11. These file
+sizes were often 500kB each or more, so I decided to limit the amount of data
+stored in the tile at zooms 11 and 12, adding all data at zoom 13.
+
+`tippecanoe` is run with `-C`, which defines a shell filter to pass each GeoJSON
+feature through. The metric command runs each GeoJSON feature through `jq`; at
+zoom 11 or lower contour height must be an even multiple of 50; at zoom 12 they
+must be an even multiple of 20; and at zoom 13 all contours are included (10m
+intervals are assumed.)
+
+Note however that this choice means that some contour lines will be _removed_
+when you zoom from 11 -> 12, because elevations can be a multiple of 50 without
+being a multiple of 20. This means that 11.9 -> 12.0 could be a little jagged. I
+think ideally I'd have the 12 zoom as a multiple of 25, but since I generated
+raw 10m intervals, 25 keeps no more than 50 because 25 isn't in the source
+dataset. If you wanted such a seamless zoom, you should generate 25 meter
+contours separately, and use `tile-join` and Tippecanoe's zoom options to keep
+desired contour spacing at each zoom.
+
 ```bash
 cpus=14
 # Writes GeoJSON contours for each DEM file to data/contour_10m/*.geojson
@@ -404,7 +440,7 @@ tippecanoe \
     `# Put contours into layer named 'contour_10m'` \
     -l contour_10m \
     `# Filter contours at different zoom levels` \
-    -C 'if [[ $1 -le 11 ]]; then jq "if .properties.ele_m % 50 == 0 then . else {} end"; elif [[ $1 -eq 12 ]]; then jq "if .properties.ele_m % 25 == 0 then . else {} end"; else jq "."; fi' \
+    -C 'if [[ $1 -le 11 ]]; then jq "if .properties.ele_m % 50 == 0 then . else {} end"; elif [[ $1 -eq 12 ]]; then jq "if .properties.ele_m % 20 == 0 then . else {} end"; else jq "."; fi' \
     `# Export to contour_10m.mbtiles` \
     -o data/contour_10m.mbtiles \
     data/contour_10m/*.geojson
@@ -422,7 +458,7 @@ tippecanoe \
     `# Put contours into layer named 'contour_40ft'` \
     -l contour_40ft \
     `# Filter contours at different zoom levels` \
-    -C 'if [[ $1 -le 11 ]]; then jq "if .properties.ele_ft % 200 == 0 then . else {} end"; elif [[ $1 -eq 12 ]]; then jq "if .properties.ele_ft % 100 == 0 then . else {} end"; else jq "."; fi' \
+    -C 'if [[ $1 -le 11 ]]; then jq "if .properties.ele_ft % 200 == 0 then . else {} end"; elif [[ $1 -eq 12 ]]; then jq "if .properties.ele_ft % 80 == 0 then . else {} end"; else jq "."; fi' \
     `# Export to contour_40ft.mbtiles` \
     -o data/contour_40ft.mbtiles \
     data/contour_40ft/*.geojson
