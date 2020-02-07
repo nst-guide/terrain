@@ -60,11 +60,12 @@ def download_dem(bbox, directory, overwrite, high_res):
     return local_paths
 
 
-def get_urls(bbox, high_res):
+def get_urls(bbox, high_res, use_best_fit=True):
     """
     Args:
         - bbox (tuple): bounding box (west, south, east, north)
         - high_res (bool): If True, downloads high-res 1/3 arc-second DEM
+        - use_best_fit: Filter by bestFitIndex > 0
     """
     url = 'https://viewer.nationalmap.gov/tnmaccess/api/products'
     if high_res:
@@ -88,7 +89,11 @@ def get_urls(bbox, high_res):
 
     # If I don't need to page for more results, return
     if len(res['items']) == res['total']:
-        return [x['downloadURL'] for x in res['items'] if x['bestFitIndex'] > 0]
+        if use_best_fit:
+            return [
+                x['downloadURL'] for x in res['items'] if x['bestFitIndex'] > 0]
+        else:
+            return [x['downloadURL'] for x in res['items']]
 
     # Otherwise, need to page
     all_results = [*res['items']]
@@ -101,7 +106,10 @@ def get_urls(bbox, high_res):
         all_results.extend(res['items'])
 
     # Keep all results with best fit index >0
-    return [x['downloadURL'] for x in all_results if x['bestFitIndex'] > 0]
+    if use_best_fit:
+        return [x['downloadURL'] for x in all_results if x['bestFitIndex'] > 0]
+    else:
+        return [x['downloadURL'] for x in all_results]
 
 
 def download_url(url, directory, overwrite=False):
