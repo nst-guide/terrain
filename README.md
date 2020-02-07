@@ -78,8 +78,11 @@ If you want to go that route, set this as your source in your `style.json` (note
 }
 ```
 
-Note that the Terrarium dataset uses a different encoding than Mapbox's RGB
-tiles.
+Note that the Terrarium dataset uses a [different encoding](https://github.com/tilezen/joerd/blob/master/docs/formats.md#terrarium) than Mapbox's RGB
+tiles:
+```
+elevation_m = (red * 256 + green + blue / 256) - 32768
+```
 
 ### Contours
 
