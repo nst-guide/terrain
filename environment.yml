@@ -1,0 +1,10 @@
+name: terrain
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - click
+  - gdal
+  - requests
+  - tippecanoe
+  - tqdm
