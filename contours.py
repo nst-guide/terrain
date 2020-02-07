@@ -22,12 +22,7 @@ from download import download_url, get_urls
     is_flag=True,
     default=False,
     help="Download high-res 1/3 arc-second DEM.")
-@click.option(
-    '-o',
-    '--output-dir',
-    required=True,
-    type=click.Path(file_okay=False, dir_okay=True, writable=True))
-def main(bbox, high_res, output_dir):
+def main(bbox, high_res):
     """Generate contours sequentially
     """
     if bbox is None:
@@ -37,8 +32,6 @@ def main(bbox, high_res, output_dir):
         bbox = tuple(map(float, re.split(r'[, ]+', bbox)))
 
     # Get list of files
-    output_dir = Path(output_dir).resolve()
-    output_dir.mkdir(parents=True, exist_ok=True)
     urls = get_urls(bbox, high_res=high_res, use_best_fit=False)
     for url in urls:
         with TemporaryDirectory() as tmpdir:
