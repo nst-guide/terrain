@@ -189,25 +189,10 @@ git clone https://github.com/nst-guide/terrain
 cd terrain
 ```
 
-This is written to work with Python >= 3.6. To install dependencies:
-
+Then install dependencies
 ```
-pip install click requests tqdm
-```
-
-This also has a dependency on GDAL. I find that the easiest way of installing
-GDAL is through Conda:
-
-```
-conda create -n terrain python gdal -c conda-forge
+conda env create -f environment.yml
 source activate terrain
-pip install click requests tqdm
-```
-
-You can also install GDAL via Homebrew on MacOS
-
-```
-brew install gdal
 ```
 
 ## Code Overview
