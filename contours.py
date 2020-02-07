@@ -61,3 +61,6 @@ def main(bbox, high_res, output_dir):
             # outputs hardcoded to data/contours_40ft
             cmd = ['bash', 'make_contours_40ft.sh', unzipped_path]
             run(cmd, check=True)
+
+if __name__ == '__main__':
+    main()
