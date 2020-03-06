@@ -120,7 +120,7 @@ def run_tippecanoe(geojson_path, metric=False):
         # Running as external script was necessary on EC2 to prevent
         # sh [[ not found
         cmd.append('-C')
-        cmd.append('./metric_prefilter.sh')
+        cmd.append('./metric_prefilter.sh "$@"')
         # Export to data/contour_10m/*.mbtiles
         mbtiles_path = geojson_path.parents[0] / (
             geojson_path.stem + '.mbtiles')
@@ -135,7 +135,7 @@ def run_tippecanoe(geojson_path, metric=False):
         # Running as external script was necessary on EC2 to prevent
         # sh [[ not found
         cmd.append('-C')
-        cmd.append('./imperial_prefilter.sh')
+        cmd.append('./imperial_prefilter.sh "$@"')
         # Export to data/contour_40ft/*.mbtiles
         mbtiles_path = geojson_path.parents[0] / (
             geojson_path.stem + '.mbtiles')
