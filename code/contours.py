@@ -117,6 +117,8 @@ def run_tippecanoe(geojson_path, metric=False):
         # Put contours into layer named 'contour_10m'
         cmd.extend(['-l', 'contour_10m'])
         # Filter contours at different zoom levels
+        # Running as external script was necessary on EC2 to prevent
+        # sh [[ not found
         cmd.append('-C')
         cmd.append('./metric_prefilter.sh')
         # Export to data/contour_10m/*.mbtiles
@@ -130,6 +132,8 @@ def run_tippecanoe(geojson_path, metric=False):
 
         cmd.extend(['-l', 'contour_40ft'])
         # Filter contours at different zoom levels
+        # Running as external script was necessary on EC2 to prevent
+        # sh [[ not found
         cmd.append('-C')
         cmd.append('./imperial_prefilter.sh')
         # Export to data/contour_40ft/*.mbtiles
