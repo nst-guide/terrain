@@ -118,9 +118,7 @@ def run_tippecanoe(geojson_path, metric=False):
         cmd.extend(['-l', 'contour_10m'])
         # Filter contours at different zoom levels
         cmd.append('-C')
-        cmd.append(
-            'if [[ $1 -le 11 ]]; then jq "if .properties.ele_m % 50 == 0 then . else {} end"; elif [[ $1 -eq 12 ]]; then jq "if .properties.ele_m % 20 == 0 then . else {} end"; else jq "."; fi'
-        )
+        cmd.append('./metric_prefilter.sh')
         # Export to data/contour_10m/*.mbtiles
         mbtiles_path = geojson_path.parents[0] / (
             geojson_path.stem + '.mbtiles')
@@ -133,9 +131,7 @@ def run_tippecanoe(geojson_path, metric=False):
         cmd.extend(['-l', 'contour_40ft'])
         # Filter contours at different zoom levels
         cmd.append('-C')
-        cmd.append(
-            'if [[ $1 -le 11 ]]; then jq "if .properties.ele_ft % 200 == 0 then . else {} end"; elif [[ $1 -eq 12 ]]; then jq "if .properties.ele_ft % 80 == 0 then . else {} end"; else jq "."; fi'
-        )
+        cmd.append('./imperial_prefilter.sh')
         # Export to data/contour_40ft/*.mbtiles
         mbtiles_path = geojson_path.parents[0] / (
             geojson_path.stem + '.mbtiles')
