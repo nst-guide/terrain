@@ -45,6 +45,7 @@ def main(bbox, high_res, bucket, bucket_path):
     for url in urls:
         with TemporaryDirectory() as tmpdir:
             # Download url to local path
+            print(url)
             local_path = download_url(url, tmpdir)
 
             # Unzip DEM
@@ -56,6 +57,7 @@ def main(bbox, high_res, bucket, bucket_path):
 
             # Generate metric contours
             # outputs hardcoded to data/contours_10m
+            print('generating metric contours')
             cmd = ['bash', 'make_contours_10m.sh', unzipped_path]
             run(cmd, check=True)
 
@@ -63,6 +65,7 @@ def main(bbox, high_res, bucket, bucket_path):
                 gj_path = Path('data/contour_10m') / (
                     Path(unzipped_path).stem + '.geojson')
                 assert gj_path.exists(), 'file does not exist'
+                print('generating metric mbtiles')
                 mbtiles_path = run_tippecanoe(gj_path, metric=True)
 
                 # Write mbtiles to S3
@@ -75,6 +78,7 @@ def main(bbox, high_res, bucket, bucket_path):
 
             # Generate imperial contours
             # outputs hardcoded to data/contours_40ft
+            print('generating imperial contours')
             cmd = ['bash', 'make_contours_40ft.sh', unzipped_path]
             run(cmd, check=True)
 
@@ -82,6 +86,7 @@ def main(bbox, high_res, bucket, bucket_path):
                 gj_path = Path('data/contour_40ft') / (
                     Path(unzipped_path).stem + '.geojson')
                 assert gj_path.exists(), 'file does not exist'
+                print('generating imperial mbtiles')
                 mbtiles_path = run_tippecanoe(gj_path, metric=False)
 
                 # Write mbtiles to S3
