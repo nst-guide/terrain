@@ -74,6 +74,7 @@ If you want to go that route, set this as your source in your `style.json` (note
   ],
   "minzoom": 0,
   "maxzoom": 15,
+  "tileSize": 256,
   "encoding": "terrarium"
 }
 ```
