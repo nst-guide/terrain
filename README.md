@@ -408,6 +408,20 @@ dataset. If you wanted such a seamless zoom, you should generate 25 meter
 contours separately, and use `tile-join` and Tippecanoe's zoom options to keep
 desired contour spacing at each zoom.
 
+_New method_: generate an imperial and metric mbtiles file for each DEM and put
+the mbtiles on S3. Then use `tile-join` on each of the s3 mbtiles to create one
+full contours file.
+
+```bash
+python code/contours.py \
+    --bbox '-126.02, 23.72, -65.89, 49.83' \
+    --high_res \
+    --bucket bucket-name \
+    --bucket-path contours
+```
+
+_Old method_: generate all contour GeoJSON files; then make a single mbtiles at once.
+
 ```bash
 cpus=14
 # Writes GeoJSON contours for each DEM file to data/contour_10m/*.geojson
