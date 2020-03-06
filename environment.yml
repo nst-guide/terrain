@@ -5,6 +5,7 @@ channels:
 dependencies:
   - click
   - gdal
+  - jq
   - requests
   - tippecanoe
   - tqdm
