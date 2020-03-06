@@ -414,7 +414,8 @@ the mbtiles on S3. Then use `tile-join` on each of the s3 mbtiles to create one
 full contours file.
 
 ```bash
-python code/contours.py \
+cd code
+python contours.py \
     --bbox '-126.02, 23.72, -65.89, 49.83' \
     --high_res \
     --bucket bucket-name \
