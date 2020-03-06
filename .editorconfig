@@ -16,5 +16,5 @@ indent_size = 4
 [Makefile]
 indent_style = tab
 
-[*.js]
+[*.{js,yml}]
 indent_size = 2

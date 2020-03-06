@@ -3,6 +3,7 @@ channels:
   - conda-forge
   - nodefaults
 dependencies:
+  - boto3
   - click
   - gdal
   - jq
