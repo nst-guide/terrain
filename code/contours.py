@@ -119,7 +119,7 @@ def run_tippecanoe(geojson_path, metric=False):
         # Filter contours at different zoom levels
         cmd.append('-C')
         cmd.append(
-            '\'if [[ $1 -le 11 ]]; then jq "if .properties.ele_m % 50 == 0 then . else {} end"; elif [[ $1 -eq 12 ]]; then jq "if .properties.ele_m % 20 == 0 then . else {} end"; else jq "."; fi\''
+            'bash -c \'if [[ $1 -le 11 ]]; then jq "if .properties.ele_m % 50 == 0 then . else {} end"; elif [[ $1 -eq 12 ]]; then jq "if .properties.ele_m % 20 == 0 then . else {} end"; else jq "."; fi\''
         )
         # Export to data/contour_10m/*.mbtiles
         mbtiles_path = geojson_path.parents[0] / (
@@ -134,7 +134,7 @@ def run_tippecanoe(geojson_path, metric=False):
         # Filter contours at different zoom levels
         cmd.append('-C')
         cmd.append(
-            '\'if [[ $1 -le 11 ]]; then jq "if .properties.ele_ft % 200 == 0 then . else {} end"; elif [[ $1 -eq 12 ]]; then jq "if .properties.ele_ft % 80 == 0 then . else {} end"; else jq "."; fi\''
+            'bash -c \'if [[ $1 -le 11 ]]; then jq "if .properties.ele_ft % 200 == 0 then . else {} end"; elif [[ $1 -eq 12 ]]; then jq "if .properties.ele_ft % 80 == 0 then . else {} end"; else jq "."; fi\''
         )
         # Export to data/contour_40ft/*.mbtiles
         mbtiles_path = geojson_path.parents[0] / (
