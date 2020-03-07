@@ -5,6 +5,7 @@ from tempfile import TemporaryDirectory
 from zipfile import ZipFile
 
 import boto3
+import botocore
 import click
 
 from download import download_url, get_urls
@@ -27,11 +28,13 @@ s3 = boto3.resource('s3')
     help="Download high-res 1/3 arc-second DEM.")
 @click.option('--bucket', default=None, type=str, help='S3 bucket')
 @click.option(
-    '--bucket-path',
+    '--bucket-prefix',
     default=None,
     type=str,
-    help='Root of contours path in S3 bucket')
-def main(bbox, high_res, bucket, bucket_path):
+    help=
+    'Root of contours path in S3 bucket. Mbtiles files are saved at {bucket-prefix}/{10m,40ft}/{id}.mbtiles'
+)
+def main(bbox, high_res, bucket, bucket_prefix):
     """Generate contours sequentially
     """
     if bbox is None:
@@ -43,60 +46,71 @@ def main(bbox, high_res, bucket, bucket_path):
     # Get list of files
     urls = get_urls(bbox, high_res=high_res, use_best_fit=False)
     for url in urls:
-        with TemporaryDirectory() as tmpdir:
-            # Download url to local path
-            print(url)
-            local_path = download_url(url, tmpdir)
+        generate_contours_for_url(
+            url=url, bucket=bucket, bucket_prefix=bucket_prefix)
 
-            # Unzip DEM
-            with open(local_path, 'rb') as f:
-                with ZipFile(f) as zf:
-                    img_file = [
-                        x for x in zf.namelist() if x.endswith('.img')][0]
-                    unzipped_path = zf.extract(img_file, path=tmpdir)
 
-            # Generate metric contours
-            # outputs hardcoded to data/contours_10m
-            print('generating metric contours')
-            cmd = ['bash', 'make_contours_10m.sh', unzipped_path]
-            run(cmd, check=True)
+def generate_contours_for_url(url, bucket, bucket_prefix):
+    # Check if s3 files already exist
+    s3_path_metric = get_s3_path(url, bucket_prefix, metric=True)
+    s3_path_imperial = get_s3_path(url, bucket_prefix, metric=False)
+    if s3_key_exists(bucket, key=s3_path_metric) and s3_key_exists(
+            bucket, key=s3_path_imperial):
+        print('s3 path exists; skipping')
+        return None
 
-            if bucket is not None:
-                gj_path = Path('data/contour_10m') / (
-                    Path(unzipped_path).stem + '.geojson')
-                assert gj_path.exists(), 'file does not exist'
-                print('generating metric mbtiles')
-                mbtiles_path = run_tippecanoe(gj_path, metric=True)
+    with TemporaryDirectory() as tmpdir:
+        # Download url to local path
+        print(url)
+        local_path = download_url(url, tmpdir)
 
-                # Write mbtiles to S3
-                s3.Bucket(bucket).upload_file(
-                    str(mbtiles_path), f'{bucket_path}/10m/{mbtiles_path.name}')
+        # Unzip DEM
+        with open(local_path, 'rb') as f:
+            with ZipFile(f) as zf:
+                img_file = [x for x in zf.namelist() if x.endswith('.img')][0]
+                unzipped_path = zf.extract(img_file, path=tmpdir)
 
-                # Delete geojson and mbtiles
-                Path(gj_path).unlink(missing_ok=True)
-                Path(mbtiles_path).unlink(missing_ok=True)
+        # Generate metric contours
+        # outputs hardcoded to data/contours_10m
+        print('generating metric contours')
+        cmd = ['bash', 'make_contours_10m.sh', unzipped_path]
+        run(cmd, check=True)
 
-            # Generate imperial contours
-            # outputs hardcoded to data/contours_40ft
-            print('generating imperial contours')
-            cmd = ['bash', 'make_contours_40ft.sh', unzipped_path]
-            run(cmd, check=True)
+        if bucket is not None:
+            gj_path = Path('data/contour_10m') / (
+                Path(unzipped_path).stem + '.geojson')
+            assert gj_path.exists(), 'file does not exist'
+            print('generating metric mbtiles')
+            mbtiles_path = run_tippecanoe(gj_path, metric=True)
 
-            if bucket is not None:
-                gj_path = Path('data/contour_40ft') / (
-                    Path(unzipped_path).stem + '.geojson')
-                assert gj_path.exists(), 'file does not exist'
-                print('generating imperial mbtiles')
-                mbtiles_path = run_tippecanoe(gj_path, metric=False)
+            # Write mbtiles to S3
+            s3.Bucket(bucket).upload_file(
+                str(mbtiles_path), f'{bucket_prefix}/10m/{mbtiles_path.name}')
 
-                # Write mbtiles to S3
-                s3.Bucket(bucket).upload_file(
-                    str(mbtiles_path),
-                    f'{bucket_path}/40ft/{mbtiles_path.name}')
+            # Delete geojson and mbtiles
+            Path(gj_path).unlink(missing_ok=True)
+            Path(mbtiles_path).unlink(missing_ok=True)
 
-                # Delete geojson and mbtiles
-                Path(gj_path).unlink(missing_ok=True)
-                Path(mbtiles_path).unlink(missing_ok=True)
+        # Generate imperial contours
+        # outputs hardcoded to data/contours_40ft
+        print('generating imperial contours')
+        cmd = ['bash', 'make_contours_40ft.sh', unzipped_path]
+        run(cmd, check=True)
+
+        if bucket is not None:
+            gj_path = Path('data/contour_40ft') / (
+                Path(unzipped_path).stem + '.geojson')
+            assert gj_path.exists(), 'file does not exist'
+            print('generating imperial mbtiles')
+            mbtiles_path = run_tippecanoe(gj_path, metric=False)
+
+            # Write mbtiles to S3
+            s3.Bucket(bucket).upload_file(
+                str(mbtiles_path), f'{bucket_prefix}/40ft/{mbtiles_path.name}')
+
+            # Delete geojson and mbtiles
+            Path(gj_path).unlink(missing_ok=True)
+            Path(mbtiles_path).unlink(missing_ok=True)
 
 
 def run_tippecanoe(geojson_path, metric=False):
@@ -147,6 +161,39 @@ def run_tippecanoe(geojson_path, metric=False):
     s = ' '.join(cmd)
     run(s, check=True, stdout=True, stderr=True, shell=True)
     return mbtiles_path
+
+
+def get_s3_path(url, bucket_prefix, metric):
+    path = bucket_prefix
+
+    if metric:
+        path += '/10m/'
+    else:
+        path += '/40ft/'
+
+    path += (Path(url).stem + '.mbtiles')
+    return path
+
+
+def s3_key_exists(bucket, key):
+    """Check if s3 key exists
+
+    From: https://stackoverflow.com/a/33843019
+    """
+    if not bucket or not key:
+        return False
+
+    try:
+        s3.Object(bucket, key).load()
+    except botocore.exceptions.ClientError as e:
+        if e.response['Error']['Code'] == "404":
+            # The object does not exist.
+            return False
+        else:
+            # Something else has gone wrong.
+            raise botocore.exceptions.ClientError(e)
+
+    return True
 
 
 if __name__ == '__main__':

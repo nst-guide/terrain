@@ -4,6 +4,7 @@ channels:
   - nodefaults
 dependencies:
   - boto3
+  - botocore
   - click
   - gdal
   - jq

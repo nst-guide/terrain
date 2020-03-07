@@ -419,7 +419,7 @@ python contours.py \
     --bbox '-126.02, 23.72, -65.89, 49.83' \
     --high_res \
     --bucket bucket-name \
-    --bucket-path contours
+    --bucket-prefix contours
 ```
 
 _Old method_: generate all contour GeoJSON files; then make a single mbtiles at once.
