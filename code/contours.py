@@ -159,7 +159,11 @@ def run_tippecanoe(geojson_path, metric=False):
     cmd.append(str(geojson_path))
 
     s = ' '.join(cmd)
-    run(s, check=True, stdout=True, stderr=True, shell=True)
+    res = run(s, capture_output=True, shell=True, encoding='utf-8')
+    if res.stdout:
+        print(res.stdout)
+    if res.stderr:
+        print(res.stderr)
     return mbtiles_path
 
 
