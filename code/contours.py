@@ -46,6 +46,9 @@ def main(bbox, high_res, bucket, bucket_prefix):
     # Get list of files
     urls = get_urls(bbox, high_res=high_res, use_best_fit=False)
     for url in urls:
+        # A couple urls are ftp. just ignore these for now
+        if url.startswith('ftp://'):
+            continue
         generate_contours_for_url(
             url=url, bucket=bucket, bucket_prefix=bucket_prefix)
 
